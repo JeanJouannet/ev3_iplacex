@@ -6,7 +6,6 @@ import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -65,7 +63,7 @@ enum class Screen {
     Form,
     Camera,
     Map,
-    BigPhoto
+    BigPicture
 }
 class AppVM: ViewModel() {
     val currentScreen = mutableStateOf(Screen.Form)
@@ -130,7 +128,7 @@ fun AppUI(
         Screen.Map -> {
             MapUI(appVM = appVM, formVM = formVM, permissionLauncher = permissionLauncher)
         }
-        Screen.BigPhoto -> {
+        Screen.BigPicture -> {
             BigPhotoUI(formVM = formVM, appVM = appVM)
         }
     }
@@ -255,7 +253,7 @@ fun FormUI(appVM: AppVM, formVM: FormVM) {
                     contentDescription = "Foto",
                     modifier = Modifier
                         .size(48.dp)
-                        .clickable { appVM.currentScreen.value = Screen.BigPhoto }
+                        .clickable { appVM.currentScreen.value = Screen.BigPicture }
                 )
             }
 
@@ -370,7 +368,7 @@ fun getLocation(context: Context, onSuccess: (location: Location?) -> Unit) {
             onSuccess(null)
         }
     } catch (e: SecurityException) {
-        Log.e("Location", "No se pudo obtener la ubicación: $e")
+        Log.e("Location", "Failed to retrieve location: $e")
         onSuccess(null)
     }
 }
