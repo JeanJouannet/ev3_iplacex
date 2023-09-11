@@ -20,6 +20,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -58,10 +60,12 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.io.File
 
+
 enum class Screen {
     Form,
     Camera,
-    Map
+    Map,
+    BigPhoto
 }
 class AppVM: ViewModel() {
     val currentScreen = mutableStateOf(Screen.Form)
@@ -110,24 +114,43 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppUI(
     permissionLauncher: ActivityResultLauncher<Array<String>>,
-    cameraController: LifecycleCameraController
+    cameraController: LifecycleCameraController,
 ) {
 
     val appVM:AppVM = viewModel()
+    val formVM:FormVM = viewModel()
 
     when(appVM.currentScreen.value) {
         Screen.Form -> {
-            FormUI()
+            FormUI(appVM = appVM, formVM = formVM)
         }
         Screen.Camera -> {
-            CameraUI(permissionLauncher = permissionLauncher, cameraController = cameraController)
+            CameraUI(permissionLauncher = permissionLauncher, cameraController = cameraController, appVM = appVM, formVM = formVM)
         }
         Screen.Map -> {
-            MapUI(appVM = appVM, formVM = FormVM(), permissionLauncher = permissionLauncher)
+            MapUI(appVM = appVM, formVM = formVM, permissionLauncher = permissionLauncher)
+        }
+        Screen.BigPhoto -> {
+            BigPhotoUI(formVM = formVM, appVM = appVM)
         }
     }
 
 
+}
+
+@Composable
+fun BigPhotoUI(formVM: FormVM, appVM: AppVM) {
+    formVM.photo.value?.let {
+        Image(
+            painter = BitmapPainter(uri2imageBitmap(it, LocalContext.current)),
+            contentDescription = "Foto",
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable {
+                    appVM.currentScreen.value = Screen.Form
+                }
+        )
+    }
 }
 
 @Composable
@@ -190,23 +213,14 @@ fun MapUI(appVM: AppVM, formVM: FormVM, permissionLauncher: ActivityResultLaunch
 
 }
 
-@Composable
-fun PhotoList(photos: List<Uri>) {
-    // Muestra las miniaturas de las fotos y permite hacer clic para verlas en pantalla completa
-}
-
 fun uri2imageBitmap(uri: Uri, context: Context) = BitmapFactory.decodeStream(
     context.contentResolver.openInputStream(uri)
 ).asImageBitmap()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormUI() {
+fun FormUI(appVM: AppVM, formVM: FormVM) {
     var placeVisited by remember { mutableStateOf("") }
-    var photos by remember { mutableStateOf(emptyList<Uri>()) }
-    val appVM:AppVM = viewModel()
-    val formVM:FormVM = viewModel()
-    var showMap = false
 
     Column(
         modifier = Modifier.padding(16.dp)
@@ -239,7 +253,9 @@ fun FormUI() {
                 Image(
                     painter = BitmapPainter(uri2imageBitmap(it, LocalContext.current)),
                     contentDescription = "Foto",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable { appVM.currentScreen.value = Screen.BigPhoto }
                 )
             }
 
@@ -251,6 +267,10 @@ fun FormUI() {
             ) {
                 Text(
                     text = formVM.placeVisited.value,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                Text(
+                    text = "Lat: ${formVM.lat.value} Long: ${formVM.lon.value}",
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
@@ -271,12 +291,11 @@ fun FormUI() {
 }
 
 @Composable
-fun CameraUI(cameraController:LifecycleCameraController, permissionLauncher: ActivityResultLauncher<Array<String>>){
+fun CameraUI(cameraController:LifecycleCameraController, permissionLauncher: ActivityResultLauncher<Array<String>>,
+             appVM: AppVM, formVM: FormVM){
     permissionLauncher.launch(arrayOf(android.Manifest.permission.CAMERA))
 
     val context = LocalContext.current
-    val formVM:FormVM = viewModel()
-    val appVM:AppVM = viewModel()
 
     AndroidView(
         modifier = Modifier.fillMaxSize(),
